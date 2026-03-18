@@ -6,6 +6,19 @@ import {
   TrendingUp 
 } from 'lucide-react';
 import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from 'recharts';
+import {
   Table,
   TableBody,
   TableCell,
@@ -13,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/Table"
+import { salesTrendData, categoryDistributionData } from '../data/mock';
 
 const stats = [
   { name: '今日订单', value: '156', icon: ShoppingCart, change: '+12.5%', changeType: 'positive' },
@@ -27,6 +41,8 @@ const recentOrders = [
   { id: 'ORD-003', customer: '王五', product: 'BCAA支链氨基酸', amount: '¥159.00', status: '已完成', date: '2026-03-16' },
   { id: 'ORD-004', customer: '赵六', product: '左旋肉碱胶囊', amount: '¥129.00', status: '已取消', date: '2026-03-16' },
 ];
+
+const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
 
 export default function Dashboard() {
   return (
@@ -57,6 +73,80 @@ export default function Dashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Sales Trend Chart */}
+        <div className="bg-white p-6 shadow-sm rounded-xl border border-gray-100">
+          <h3 className="text-lg font-medium text-gray-900 mb-6">销售趋势</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={salesTrendData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '8px', 
+                    border: 'none', 
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' 
+                  }} 
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="sales" 
+                  stroke="#10b981" 
+                  strokeWidth={3} 
+                  dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 6, strokeWidth: 0 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Category Distribution Chart */}
+        <div className="bg-white p-6 shadow-sm rounded-xl border border-gray-100">
+          <h3 className="text-lg font-medium text-gray-900 mb-6">类目分布</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={categoryDistributionData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {categoryDistributionData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '8px', 
+                    border: 'none', 
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' 
+                  }} 
+                />
+                <Legend verticalAlign="bottom" height={36}/>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
       {/* Recent Orders Table */}
