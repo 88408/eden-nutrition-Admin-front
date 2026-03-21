@@ -6,7 +6,6 @@ export const mockCategories = [
   { id: 5, name: '维生素', parentId: 4, sortOrder: 1, icon: '' },
   { id: 6, name: '矿物质', parentId: 4, sortOrder: 2, icon: '' },
   { id: 7, name: '体重管理', parentId: 0, sortOrder: 3, icon: 'scale' },
-  // { id: 7, name: '体重管理', parentId: 0, sortOrder: 3, icon: 'scale' },
 ];
 
 export const salesTrendData = [
