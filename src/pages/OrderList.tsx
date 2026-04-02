@@ -9,9 +9,12 @@ import {
 } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Search, Eye, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { motion } from 'motion/react';
 
 // Mock Data
 const mockOrders = [
@@ -28,6 +31,8 @@ export default function OrderList() {
   const [loading, setLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [shippingOrderNo, setShippingOrderNo] = useState<string | null>(null);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -50,10 +55,16 @@ export default function OrderList() {
     fetchOrders();
   };
 
-  const handleShip = (orderNo: string) => {
-    if (window.confirm(`确认发货订单 ${orderNo} 吗？`)) {
-      setOrders(orders.map(o => o.orderNo === orderNo ? { ...o, status: '已发货' } : o));
+  const handleShipClick = (orderNo: string) => {
+    setShippingOrderNo(orderNo);
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmShip = () => {
+    if (shippingOrderNo) {
+      setOrders(orders.map(o => o.orderNo === shippingOrderNo ? { ...o, status: '已发货' } : o));
       toast.success('发货成功');
+      setShippingOrderNo(null);
     }
   };
 
@@ -63,29 +74,43 @@ export default function OrderList() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">订单管理</h1>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="space-y-8 pb-12"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-[#1d1d1f] font-display">订单管理</h1>
+          <p className="text-[#86868b] mt-1">查看和处理您的客户订单</p>
+        </div>
       </div>
 
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4 justify-between">
-        <form onSubmit={handleSearch} className="flex items-center gap-4 flex-1 max-w-md">
+      <div className="apple-card p-6 flex flex-col lg:flex-row gap-6 justify-between items-end lg:items-center">
+        <form onSubmit={handleSearch} className="flex items-center gap-4 flex-1 w-full max-w-2xl">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#86868b]" />
             <Input 
               placeholder="搜索订单号或客户姓名..." 
-              className="pl-9"
+              className="pl-12 bg-[#f5f5f7] border-none rounded-2xl py-6 focus:ring-2 focus:ring-[#0071e3]/20 transition-all"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
             />
           </div>
-          <Button type="submit" variant="secondary">搜索</Button>
+          <Button 
+            type="submit" 
+            variant="secondary"
+            className="bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] rounded-2xl px-8 py-6 font-semibold transition-all"
+          >
+            搜索
+          </Button>
         </form>
 
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">订单状态:</span>
-          <select 
-            className="h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+        <div className="flex items-center gap-3 w-full lg:w-auto">
+          <span className="text-sm font-semibold text-[#1d1d1f] whitespace-nowrap">订单状态:</span>
+          <Select 
+            className="flex-1 lg:w-40"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
@@ -94,63 +119,69 @@ export default function OrderList() {
             <option value="已发货">已发货</option>
             <option value="已完成">已完成</option>
             <option value="已取消">已取消</option>
-          </select>
+          </Select>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="apple-card overflow-hidden">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>订单号</TableHead>
-              <TableHead>客户姓名</TableHead>
-              <TableHead>联系电话</TableHead>
-              <TableHead>订单金额</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>创建时间</TableHead>
-              <TableHead className="text-right">操作</TableHead>
+          <TableHeader className="bg-[#f5f5f7]/50">
+            <TableRow className="border-none">
+              <TableHead className="py-4 font-semibold text-[#1d1d1f]">订单号</TableHead>
+              <TableHead className="py-4 font-semibold text-[#1d1d1f]">客户姓名</TableHead>
+              <TableHead className="py-4 font-semibold text-[#1d1d1f]">联系电话</TableHead>
+              <TableHead className="py-4 font-semibold text-[#1d1d1f]">订单金额</TableHead>
+              <TableHead className="py-4 font-semibold text-[#1d1d1f]">状态</TableHead>
+              <TableHead className="py-4 font-semibold text-[#1d1d1f]">创建时间</TableHead>
+              <TableHead className="py-4 font-semibold text-[#1d1d1f] text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">加载中...</TableCell>
+                <TableCell colSpan={7} className="text-center py-12 text-[#86868b]">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-6 h-6 border-2 border-[#0071e3]/30 border-t-[#0071e3] rounded-full animate-spin"></div>
+                    <span>加载中...</span>
+                  </div>
+                </TableCell>
               </TableRow>
             ) : orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">暂无数据</TableCell>
+                <TableCell colSpan={7} className="text-center py-12 text-[#86868b]">暂无数据</TableCell>
               </TableRow>
             ) : (
               orders.map((order) => (
-                <TableRow key={order.orderNo}>
-                  <TableCell className="font-medium">{order.orderNo}</TableCell>
-                  <TableCell>{order.customer}</TableCell>
-                  <TableCell>{order.phone}</TableCell>
-                  <TableCell>¥{order.amount.toFixed(2)}</TableCell>
+                <TableRow key={order.orderNo} className="border-b border-[#f5f5f7] hover:bg-[#f5f5f7]/30 transition-colors">
+                  <TableCell className="font-bold text-[#1d1d1f] font-mono text-xs tracking-tighter">{order.orderNo}</TableCell>
+                  <TableCell className="text-[#1d1d1f] font-medium">{order.customer}</TableCell>
+                  <TableCell className="text-[#86868b]">{order.phone}</TableCell>
+                  <TableCell className="font-bold text-[#1d1d1f] font-mono whitespace-nowrap">¥{order.amount.toFixed(2)}</TableCell>
                   <TableCell>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      order.status === '已完成' ? 'bg-emerald-100 text-emerald-800' :
-                      order.status === '已发货' ? 'bg-blue-100 text-blue-800' :
-                      order.status === '待发货' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
+                      order.status === '已完成' ? 'bg-[#e3f9e5] text-[#1a7d32]' :
+                      order.status === '已发货' ? 'bg-[#e1f0ff] text-[#0071e3]' :
+                      order.status === '待发货' ? 'bg-[#fff4e5] text-[#b45309]' :
+                      'bg-[#f5f5f7] text-[#86868b]'
                     }`}>
                       {order.status}
                     </span>
                   </TableCell>
-                  <TableCell className="text-gray-500">{order.createTime}</TableCell>
+                  <TableCell className="text-[#86868b] text-xs">{order.createTime}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="icon" title="查看详情" onClick={() => viewDetails(order)}>
-                        <Eye className="h-4 w-4 text-blue-600" />
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="hover:bg-blue-50 rounded-xl transition-colors" title="查看详情" onClick={() => viewDetails(order)}>
+                        <Eye className="h-4 w-4 text-[#0071e3]" />
                       </Button>
                       {order.status === '待发货' && (
                         <Button 
                           variant="ghost" 
                           size="icon" 
+                          className="hover:bg-emerald-50 rounded-xl transition-colors"
                           title="发货"
-                          onClick={() => handleShip(order.orderNo)}
+                          onClick={() => handleShipClick(order.orderNo)}
                         >
-                          <Truck className="h-4 w-4 text-emerald-600" />
+                          <Truck className="h-4 w-4 text-[#1a7d32]" />
                         </Button>
                       )}
                     </div>
@@ -168,64 +199,89 @@ export default function OrderList() {
         title="订单详情"
       >
         {selectedOrder && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-500 block mb-1">订单号</span>
-                <span className="font-medium text-gray-900">{selectedOrder.orderNo}</span>
+          <div className="space-y-6 pt-4">
+            <div className="grid grid-cols-2 gap-6 text-sm">
+              <div className="bg-[#f5f5f7] p-4 rounded-2xl">
+                <span className="text-[#86868b] block mb-1 font-semibold">订单号</span>
+                <span className="font-bold text-[#1d1d1f] font-mono">{selectedOrder.orderNo}</span>
               </div>
-              <div>
-                <span className="text-gray-500 block mb-1">订单状态</span>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  selectedOrder.status === '已完成' ? 'bg-emerald-100 text-emerald-800' :
-                  selectedOrder.status === '已发货' ? 'bg-blue-100 text-blue-800' :
-                  selectedOrder.status === '待发货' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-gray-100 text-gray-800'
+              <div className="bg-[#f5f5f7] p-4 rounded-2xl">
+                <span className="text-[#86868b] block mb-1 font-semibold">订单状态</span>
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
+                  selectedOrder.status === '已完成' ? 'bg-[#e3f9e5] text-[#1a7d32]' :
+                  selectedOrder.status === '已发货' ? 'bg-[#e1f0ff] text-[#0071e3]' :
+                  selectedOrder.status === '待发货' ? 'bg-[#fff4e5] text-[#b45309]' :
+                  'bg-[#f5f5f7] text-[#86868b]'
                 }`}>
                   {selectedOrder.status}
                 </span>
               </div>
-              <div>
-                <span className="text-gray-500 block mb-1">客户姓名</span>
-                <span className="font-medium text-gray-900">{selectedOrder.customer}</span>
+              <div className="bg-[#f5f5f7] p-4 rounded-2xl">
+                <span className="text-[#86868b] block mb-1 font-semibold">客户姓名</span>
+                <span className="font-bold text-[#1d1d1f]">{selectedOrder.customer}</span>
               </div>
-              <div>
-                <span className="text-gray-500 block mb-1">联系电话</span>
-                <span className="font-medium text-gray-900">{selectedOrder.phone}</span>
+              <div className="bg-[#f5f5f7] p-4 rounded-2xl">
+                <span className="text-[#86868b] block mb-1 font-semibold">联系电话</span>
+                <span className="font-bold text-[#1d1d1f]">{selectedOrder.phone}</span>
               </div>
-              <div>
-                <span className="text-gray-500 block mb-1">创建时间</span>
-                <span className="font-medium text-gray-900">{selectedOrder.createTime}</span>
+              <div className="bg-[#f5f5f7] p-4 rounded-2xl">
+                <span className="text-[#86868b] block mb-1 font-semibold">创建时间</span>
+                <span className="font-bold text-[#1d1d1f]">{selectedOrder.createTime}</span>
               </div>
-              <div>
-                <span className="text-gray-500 block mb-1">订单总额</span>
-                <span className="font-medium text-emerald-600 text-lg">¥{selectedOrder.amount.toFixed(2)}</span>
+              <div className="bg-[#f5f5f7] p-4 rounded-2xl">
+                <span className="text-[#86868b] block mb-1 font-semibold">订单总额</span>
+                <span className="font-bold text-[#1a7d32] text-xl">¥{selectedOrder.amount.toFixed(2)}</span>
               </div>
             </div>
             
-            <div className="border-t border-gray-200 pt-4 mt-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">商品清单</h4>
-              <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
-                <div className="flex justify-between items-center py-2 border-b border-gray-200 last:border-0">
-                  <span>示例商品 1</span>
-                  <span>x1</span>
-                  <span className="font-medium text-gray-900">¥{selectedOrder.amount.toFixed(2)}</span>
+            <div className="apple-card p-6 mt-4">
+              <h4 className="text-sm font-bold text-[#1d1d1f] mb-4">商品清单</h4>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center py-3 border-b border-[#f5f5f7] last:border-0">
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-[#1d1d1f]">示例商品 1</span>
+                    <span className="text-xs text-[#86868b]">规格: 默认</span>
+                  </div>
+                  <div className="flex items-center gap-8">
+                    <span className="text-[#86868b]">x1</span>
+                    <span className="font-bold text-[#1d1d1f]">¥{selectedOrder.amount.toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6">
-              <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>关闭</Button>
+            <div className="flex justify-end gap-3 mt-8">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="rounded-2xl px-6 py-6 border-[#e8e8ed] text-[#1d1d1f] hover:bg-[#f5f5f7] transition-all"
+                onClick={() => setIsModalOpen(false)}
+              >
+                关闭
+              </Button>
               {selectedOrder.status === '待发货' && (
-                <Button onClick={() => {
-                  handleShip(selectedOrder.orderNo);
-                  setIsModalOpen(false);
-                }}>确认发货</Button>
+                <Button 
+                  className="bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-2xl px-8 py-6 font-bold shadow-lg shadow-blue-500/10 transition-all active:scale-[0.98]"
+                  onClick={() => {
+                    handleShipClick(selectedOrder.orderNo);
+                    setIsModalOpen(false);
+                  }}
+                >
+                  确认发货
+                </Button>
               )}
             </div>
           </div>
         )}
       </Modal>
-    </div>
+
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleConfirmShip}
+        title="确认发货"
+        message={`确定要对订单 ${shippingOrderNo} 进行发货处理吗？`}
+      />
+    </motion.div>
   );
 }
