@@ -1,1 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+  --radius-4xl: 2.5rem;
+  
+  --color-apple-gray-50: #f5f5f7;
+  --color-apple-gray-100: #e8e8ed;
+  --color-apple-blue: #0071e3;
+  --color-apple-red: #ff3b30;
+  --color-apple-green: #34c759;
+}
+
+@layer base {
+  body {
+    @apply bg-[#f5f5f7] text-[#1d1d1f] antialiased font-sans tracking-[-0.011em];
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+  }
+}
+
+.apple-blur {
+  @apply bg-white;
+}
+
+.apple-card {
+  @apply bg-white rounded-[2rem] border border-black/[0.02] shadow-[0_8px_32px_rgba(0,0,0,0.04)] transition-all duration-500 hover:shadow-[0_12px_48px_rgba(0,0,0,0.08)] hover:scale-[1.005];
+}
+
+.apple-gradient-text {
+  @apply bg-clip-text text-transparent bg-linear-to-br from-[#1d1d1f] to-[#86868b];
+}
+
+.apple-button-shadow {
+  @apply shadow-[0_4px_12px_rgba(0,113,227,0.15)] hover:shadow-[0_8px_24px_rgba(0,113,227,0.25)];
+}
