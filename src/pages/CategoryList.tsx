@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -53,28 +53,39 @@ const PRESET_ICONS = [
 ];
 import toast from 'react-hot-toast';
 import { motion } from 'motion/react';
-
-import { mockCategories } from '../data/mock';
+import { getCategoryTree, addCategory, updateCategory, deleteCategory } from '../api/category';
 
 export default function CategoryList() {
-  const [categories, setCategories] = useState(mockCategories);
+  const [categories, setCategories] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ name: '', parentId: 0, sortOrder: 1, icon: '' });
 
-  // Simple tree building
-  const buildTree = (items: typeof mockCategories, parentId = 0, level = 0) => {
-    let result: any[] = [];
-    items.filter(item => item.parentId === parentId).forEach(item => {
-      result.push({ ...item, level });
-      result = result.concat(buildTree(items, item.id, level + 1));
-    });
-    return result;
+  const fetchTreeData = async () => {
+    try {
+      const res = await getCategoryTree();
+      // Flatten the incoming tree for AntD-like rendering
+      const flattenTree = (nodes: any[], level = 0): any[] => {
+        let result: any[] = [];
+        nodes?.forEach(node => {
+          result.push({ ...node, level });
+          if (node.children?.length) {
+            result = result.concat(flattenTree(node.children, level + 1));
+          }
+        });
+        return result;
+      };
+      setCategories(flattenTree(res));
+    } catch (e: any) {
+      toast.error('拉取分类失败');
+    }
   };
 
-  const treeData = buildTree(categories);
+  useEffect(() => {
+    fetchTreeData();
+  }, []);
 
   const openAddModal = () => {
     setEditingId(null);
@@ -93,48 +104,35 @@ export default function CategoryList() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) {
       toast.error('分类名称不能为空');
       return;
     }
 
-    if (editingId) {
-      // Prevent setting parent to itself or its descendants
-      if (formData.parentId === editingId || getDescendantIds(editingId, categories).includes(formData.parentId)) {
-        toast.error('不能将父级分类设置为自己或自己的子分类');
-        return;
-      }
-
-      setCategories(categories.map(c => 
-        c.id === editingId 
-          ? { ...c, ...formData, sortOrder: Number(formData.sortOrder) }
-          : c
-      ));
-      toast.success('修改成功');
-    } else {
-      const newCategory = {
-        id: Date.now(),
+    try {
+      const submitData = {
         ...formData,
         sortOrder: Number(formData.sortOrder)
       };
-      setCategories([...categories, newCategory]);
-      toast.success('添加成功');
-    }
-    
-    setIsModalOpen(false);
-    setFormData({ name: '', parentId: 0, sortOrder: 1, icon: '' });
-    setEditingId(null);
-  };
 
-  const getDescendantIds = (parentId: number, allCategories: any[]): number[] => {
-    const children = allCategories.filter(c => c.parentId === parentId);
-    let ids = children.map(c => c.id);
-    children.forEach(child => {
-      ids = ids.concat(getDescendantIds(child.id, allCategories));
-    });
-    return ids;
+      if (editingId) {
+        if (formData.parentId === editingId) {
+          toast.error('不能将分类设置为自己的子分类');
+          return;
+        }
+        await updateCategory({ ...submitData, id: editingId });
+        toast.success('修改成功');
+      } else {
+        await addCategory(submitData);
+        toast.success('添加成功');
+      }
+      setIsModalOpen(false);
+      fetchTreeData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || '操作验证失败');
+    }
   };
 
   const handleDeleteClick = (id: number) => {
@@ -142,12 +140,17 @@ export default function CategoryList() {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deletingId !== null) {
-      const idsToDelete = [deletingId, ...getDescendantIds(deletingId, categories)];
-      setCategories(categories.filter(c => !idsToDelete.includes(c.id)));
-      toast.success('删除成功');
-      setDeletingId(null);
+      try {
+        await deleteCategory(deletingId);
+        toast.success('删除成功');
+        setIsConfirmOpen(false);
+        setDeletingId(null);
+        fetchTreeData();
+      } catch (e: any) {
+        toast.error(e.response?.data?.message || '删除失败，可能含有子项或者商品');
+      }
     }
   };
 
@@ -183,7 +186,7 @@ export default function CategoryList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {treeData.map((category) => (
+            {categories.map((category) => (
               <TableRow key={category.id} className="border-b border-[#f5f5f7] hover:bg-[#f5f5f7]/30 transition-colors">
                 <TableCell>
                   <div 
