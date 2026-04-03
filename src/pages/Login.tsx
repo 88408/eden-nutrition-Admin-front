@@ -7,6 +7,7 @@ import { Zap, Mail, Phone, MessageSquare, ShieldCheck } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import toast from 'react-hot-toast';
 import { motion } from 'motion/react';
+import { adminLogin } from '../api/auth';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -25,16 +26,14 @@ export default function Login() {
 
     setLoading(true);
     try {
-      // Simulating successful login
-      setTimeout(() => {
-        setAuth('mock-jwt-token-123', { id: '1', username, role: 'admin' });
-        toast.success('登录成功');
-        navigate('/dashboard');
-        setLoading(false);
-      }, 1000);
-      
-    } catch (error) {
-      console.error(error);
+      const res = await adminLogin({ username, password });
+      // If code reaches here, request was successful as axios interceptor handles error throws
+      setAuth(res.token, { id: res.userId.toString(), username: res.username, role: res.role });    
+      toast.success('登录成功');
+      navigate('/');
+    } catch (error: any) {
+      toast.error(error.message || '登录失败，请检查账号密码');
+    } finally {
       setLoading(false);
     }
   };
@@ -43,7 +42,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f5f5f7] py-12 px-4 sm:px-6 lg:px-8 font-sans">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}

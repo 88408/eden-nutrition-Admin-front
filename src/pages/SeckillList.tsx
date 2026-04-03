@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -14,16 +14,10 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Plus, Play, Clock, Edit, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'motion/react';
-
-// Mock Data
-const mockSeckills = [
-  { id: 1, productId: 1, productName: '乳清蛋白粉 5磅', seckillPrice: 299.00, stock: 50, startTime: '2026-03-18T10:00', endTime: '2026-03-18T12:00', status: '未开始' },
-  { id: 2, productId: 2, productName: '维生素C咀嚼片', seckillPrice: 49.00, stock: 100, startTime: '2026-03-17T08:00', endTime: '2026-03-17T20:00', status: '进行中' },
-  { id: 3, productId: 3, productName: 'BCAA支链氨基酸', seckillPrice: 99.00, stock: 30, startTime: '2026-03-16T10:00', endTime: '2026-03-16T12:00', status: '已结束' },
-];
+import { getSeckillPage, addSeckill, updateSeckill, deleteSeckill, finishSeckill, SeckillVO } from '../api/seckill';
 
 export default function SeckillList() {
-  const [seckills, setSeckills] = useState(mockSeckills);
+  const [seckills, setSeckills] = useState<SeckillVO[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -38,7 +32,20 @@ export default function SeckillList() {
     endTime: '' 
   });
 
-  const handleEditClick = (seckill: any) => {
+  const fetchData = async () => {
+    try {
+      const res = await getSeckillPage({ page: 1, pageSize: 100 });
+      setSeckills(res.list || []);
+    } catch (e) {
+      toast.error('获取列表数据失败');
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleEditClick = (seckill: SeckillVO) => {
     setEditingId(seckill.id);
     setFormData({
       productId: seckill.productId.toString(),
@@ -51,50 +58,58 @@ export default function SeckillList() {
     setIsEditModalOpen(true);
   };
 
-  const handleEdit = (e: React.FormEvent) => {
+  const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.productId || !formData.seckillPrice || !formData.stock || !formData.startTime || !formData.endTime) {
       toast.error('请填写完整信息');
       return;
     }
     
-    setSeckills(seckills.map(s => s.id === editingId ? {
-      ...s,
-      productId: Number(formData.productId),
-      seckillPrice: Number(formData.seckillPrice),
-      stock: Number(formData.stock),
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-    } : s));
-    
-    setIsEditModalOpen(false);
-    setFormData({ productId: '', productName: '', seckillPrice: '', stock: '', startTime: '', endTime: '' });
-    setEditingId(null);
-    toast.success('修改成功');
+    try {
+      await updateSeckill({
+        id: editingId!,
+        productId: Number(formData.productId),
+        seckillPrice: Number(formData.seckillPrice),
+        stock: Number(formData.stock),
+        limitPerUser: 1, // mock limit
+        startTime: new Date(formData.startTime).toISOString(),
+        endTime: new Date(formData.endTime).toISOString(),
+      });
+      
+      setIsEditModalOpen(false);
+      setFormData({ productId: '', productName: '', seckillPrice: '', stock: '', startTime: '', endTime: '' });
+      setEditingId(null);
+      toast.success('修改成功');
+      fetchData();
+    } catch (e) {
+      toast.error('修改失败');
+    }
   };
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.productId || !formData.seckillPrice || !formData.stock || !formData.startTime || !formData.endTime) {
       toast.error('请填写完整信息');
       return;
     }
     
-    const newSeckill = {
-      id: Date.now(),
-      productId: Number(formData.productId),
-      productName: `商品ID: ${formData.productId}`, // Mock name
-      seckillPrice: Number(formData.seckillPrice),
-      stock: Number(formData.stock),
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      status: '未开始'
-    };
-    
-    setSeckills([newSeckill, ...seckills]);
-    setIsModalOpen(false);
-    setFormData({ productId: '', productName: '', seckillPrice: '', stock: '', startTime: '', endTime: '' });
-    toast.success('创建成功');
+    try {
+      await addSeckill({
+        productId: Number(formData.productId),
+        seckillPrice: Number(formData.seckillPrice),
+        stock: Number(formData.stock),
+        limitPerUser: 1, // mock
+        startTime: new Date(formData.startTime).toISOString(),
+        endTime: new Date(formData.endTime).toISOString(),
+      });
+      
+      setIsModalOpen(false);
+      setFormData({ productId: '', productName: '', seckillPrice: '', stock: '', startTime: '', endTime: '' });
+      toast.success('创建成功');
+      fetchData();
+    } catch (e) {
+      toast.error('创建失败');
+    }
   };
 
   const handlePublishClick = (id: number) => {
@@ -107,17 +122,24 @@ export default function SeckillList() {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!confirmAction) return;
 
-    if (confirmAction.type === 'publish') {
-      setSeckills(seckills.map(s => s.id === confirmAction.id ? { ...s, status: '进行中' } : s));
-      toast.success('发布成功');
-    } else if (confirmAction.type === 'delete') {
-      setSeckills(seckills.filter(s => s.id !== confirmAction.id));
-      toast.success('删除成功');
+    try {
+      if (confirmAction.type === 'publish') {
+        await updateSeckill({ id: confirmAction.id, status: 1 }); // 1 normally means ongoing/published
+        toast.success('发布成功');
+      } else if (confirmAction.type === 'delete') {
+        await deleteSeckill(confirmAction.id);
+        toast.success('删除成功');
+      }
+      fetchData();
+    } catch (e) {
+      toast.error('操作失败');
+    } finally {
+      setConfirmAction(null);
+      setIsConfirmOpen(false);
     }
-    setConfirmAction(null);
   };
 
   return (
