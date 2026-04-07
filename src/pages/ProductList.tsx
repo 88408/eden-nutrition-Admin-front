@@ -608,6 +608,136 @@ export default function ProductList() {
         </form>
       </Modal>
 
+      {/* 商品详情 Modal - 展示所有字段 */}
+      <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="商品详情">
+        {selectedProduct && (
+            <div className="space-y-6 pt-4 max-h-[70vh] overflow-y-auto pr-2">
+              {/* 图片区域 */}
+              <div className="flex gap-4">
+                <div className="w-32 h-32 rounded-xl bg-[#f5f5f7] flex items-center justify-center overflow-hidden border border-gray-200 shrink-0">
+                  {selectedProduct.mainImage ? (
+                      <img src={selectedProduct.mainImage} alt={selectedProduct.name} className="w-full h-full object-cover" />
+                  ) : (
+                      <span className="text-gray-400 text-sm">暂无主图</span>
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <h3 className="text-lg font-bold text-[#1d1d1f] leading-tight">{selectedProduct.name}</h3>
+                  {selectedProduct.subtitle && (
+                      <p className="text-sm text-[#86868b]">{selectedProduct.subtitle}</p>
+                  )}
+                  <div className="flex items-baseline gap-2 mt-2">
+                    <span className="text-2xl font-bold text-[#ff3b30]">¥{selectedProduct.price?.toFixed(2)}</span>
+                    {selectedProduct.originalPrice && selectedProduct.originalPrice > selectedProduct.price && (
+                        <span className="text-sm text-[#86868b] line-through">¥{selectedProduct.originalPrice.toFixed(2)}</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    {selectedProduct.isHot === 1 && (
+                        <span className="px-2 py-0.5 bg-red-100 text-red-600 rounded-full text-xs font-medium">热销</span>
+                    )}
+                    {selectedProduct.isNew === 1 && (
+                        <span className="px-2 py-0.5 bg-green-100 text-green-600 rounded-full text-xs font-medium">新品</span>
+                    )}
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        selectedProduct.status === 1 ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                    {selectedProduct.status === 1 ? '上架中' : '已下架'}
+                  </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 详细信息网格 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-[#f5f5f7] rounded-xl p-3">
+                  <p className="text-xs text-[#86868b] mb-1">商品ID</p>
+                  <p className="text-sm font-semibold text-[#1d1d1f] font-mono">{selectedProduct.id}</p>
+                </div>
+                <div className="bg-[#f5f5f7] rounded-xl p-3">
+                  <p className="text-xs text-[#86868b] mb-1">分类</p>
+                  <p className="text-sm font-semibold text-[#1d1d1f]">
+                    {categories.find(c => c.id === selectedProduct.categoryId)?.name || `ID: ${selectedProduct.categoryId}`}
+                  </p>
+                </div>
+                <div className="bg-[#f5f5f7] rounded-xl p-3">
+                  <p className="text-xs text-[#86868b] mb-1">库存数量</p>
+                  <p className="text-sm font-semibold text-[#1d1d1f]">{selectedProduct.stock} 件</p>
+                </div>
+                <div className="bg-[#f5f5f7] rounded-xl p-3">
+                  <p className="text-xs text-[#86868b] mb-1">累计销量</p>
+                  <p className="text-sm font-semibold text-[#1d1d1f]">{selectedProduct.sales || 0} 件</p>
+                </div>
+              </div>
+
+              {/* 价格明细 */}
+              <div className="bg-[#f5f5f7] rounded-xl p-4 space-y-2">
+                <p className="text-xs text-[#86868b] font-medium mb-2">价格信息</p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#86868b]">原价</span>
+                  <span className="text-[#1d1d1f]">¥{selectedProduct.originalPrice?.toFixed(2) || '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#86868b]">售价</span>
+                  <span className="text-[#ff3b30] font-semibold">¥{selectedProduct.price?.toFixed(2)}</span>
+                </div>
+                {selectedProduct.originalPrice && selectedProduct.originalPrice > selectedProduct.price && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#86868b]">优惠幅度</span>
+                      <span className="text-green-600">
+                    ¥{(selectedProduct.originalPrice - selectedProduct.price).toFixed(2)}
+                        ({Math.round((1 - selectedProduct.price / selectedProduct.originalPrice) * 100)}% OFF)
+                  </span>
+                    </div>
+                )}
+              </div>
+
+              {/* 商品详情描述 */}
+              {selectedProduct.detail && (
+                  <div className="bg-[#f5f5f7] rounded-xl p-4">
+                    <p className="text-xs text-[#86868b] font-medium mb-2">商品详情</p>
+                    <p className="text-sm text-[#1d1d1f] leading-relaxed whitespace-pre-wrap">{selectedProduct.detail}</p>
+                  </div>
+              )}
+
+              {/* 时间信息 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-[#86868b] mb-1">创建时间</p>
+                  <p className="text-xs text-[#1d1d1f] font-mono">{selectedProduct.createTime || '-'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-[#86868b] mb-1">更新时间</p>
+                  <p className="text-xs text-[#1d1d1f] font-mono">{selectedProduct.updateTime || '-'}</p>
+                </div>
+              </div>
+
+              {/* 底部操作按钮 */}
+              <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl px-5"
+                    onClick={() => setIsDetailModalOpen(false)}
+                >
+                  关闭
+                </Button>
+                <Button
+                    type="button"
+                    className="rounded-xl px-5 bg-[#0071e3] hover:bg-[#0077ed] text-white"
+                    onClick={() => {
+                      setIsDetailModalOpen(false);
+                      handleEditClick(selectedProduct);
+                    }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  编辑商品
+                </Button>
+              </div>
+            </div>
+        )}
+      </Modal>
+
       <ConfirmModal
         isOpen={isConfirmOpen}
         onClose={() => {
