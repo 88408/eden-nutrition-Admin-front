@@ -61,7 +61,8 @@ export default function OrderList() {
         orderNo: keyword || undefined,
         status: mapStatusFilter(statusFilter)
       });
-      setOrders(res?.records || res?.list || res || []);
+      const data = res as any;
+      setOrders(data?.records || data?.list || data || []);
     } catch (e) {
       toast.error('获取订单列表失败');
     } finally {
@@ -185,7 +186,9 @@ export default function OrderList() {
               </TableRow>
             ) : orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-[#86868b]">暂无数据</TableCell>
+                <TableCell colSpan={7} className="text-center py-12 text-[#86868b]">
+                  <span>暂无数据</span>
+                </TableCell>
               </TableRow>
             ) : (
               orders.map((order) => (

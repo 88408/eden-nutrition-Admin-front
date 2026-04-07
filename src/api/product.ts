@@ -38,9 +38,9 @@ export const updateProduct = (data: Partial<ProductVO>) => {
 };
 
 export const deleteProduct = (id: number) => {
-  return request.delete('/admin/product', { params: { id } });
+  return request.delete(`/admin/product/${id}`);
 };
 
 export const updateProductStatus = (id: number, status: number) => {
-  return request.post('/admin/product/status', { id, status });
+  return request.put(`/admin/product/status/${id}/${status}`);
 };

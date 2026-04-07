@@ -30,7 +30,7 @@ export function ConfirmModal({
             {cancelText}
           </Button>
           <Button
-            variant="primary"
+            variant="default"
             className="bg-red-600 hover:bg-red-700 text-white"
             onClick={() => {
               onConfirm();

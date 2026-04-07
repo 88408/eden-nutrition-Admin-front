@@ -119,10 +119,12 @@ interface SimpleSelectProps {
   className?: string;
   children?: React.ReactNode;
   required?: boolean;
+  disabled?: boolean;
+  options?: Array<{ label: React.ReactNode; value: string | number; disabled?: boolean }>;
 }
 
 const SimpleSelect = React.forwardRef<HTMLButtonElement, SimpleSelectProps>(
-  ({ value, defaultValue, onChange, placeholder, className, children, required }, ref) => {
+  ({ value, defaultValue, onChange, placeholder, className, children, required, disabled, options: optionsProp }, ref) => {
     // Handle the onChange to match native select behavior
     const handleValueChange = (val: string) => {
       if (onChange) {
@@ -130,28 +132,51 @@ const SimpleSelect = React.forwardRef<HTMLButtonElement, SimpleSelectProps>(
       }
     };
 
-    // Extract options from children
-    const options = React.Children.toArray(children).map((child, index) => {
-      if (React.isValidElement(child) && child.type === "option") {
-        const val = child.props.value?.toString();
-        // Radix UI SelectItem does not allow empty string values.
-        // We filter them out as they are usually placeholders.
-        if (val === "" || val === undefined) return null;
+    // Extract options from either options prop or children
+    type SelectOptionItem = { id: string; value: string; label: any; disabled?: boolean };
+    let derivedOptions: SelectOptionItem[] = [];
+    
+    if (optionsProp && optionsProp.length > 0) {
+      derivedOptions = optionsProp
+        .filter(opt => opt.value !== "" && opt.value !== undefined && opt.value !== null)
+        .map((opt, index) => ({
+          id: `opt-prop-${index}-${opt.value}`,
+          value: opt.value.toString(),
+          label: opt.label,
+          disabled: opt.disabled,
+        }));
+    } else {
+      derivedOptions = React.Children.toArray(children).map((child, index) => {
+        if (React.isValidElement(child) && child.type === "option") {
+          const props = child.props as any;
+          const val = props.value?.toString();
+          if (val === "" || val === undefined) return null;
+          return {
+            id: `opt-${index}-${val}`,
+            value: val,
+            label: props.children,
+            disabled: props.disabled,
+          };
+        }
+        return null;
+      }).filter((opt) => opt !== null) as SelectOptionItem[];
+    }
 
-        return {
-          id: `opt-${index}-${val}`,
-          value: val,
-          label: child.props.children,
-          disabled: child.props.disabled,
-        };
-      }
-      return null;
-    }).filter((opt): opt is { id: string; value: string; label: any; disabled?: boolean } => opt !== null);
-
-    // Try to find a placeholder from the children if not provided
-    const derivedPlaceholder = placeholder || React.Children.toArray(children).find(
-      (child) => React.isValidElement(child) && child.type === "option" && (child.props.value === "" || child.props.value === undefined)
-    )?.props?.children;
+    // Try to find a placeholder
+    let derivedPlaceholder = placeholder;
+    if (!derivedPlaceholder) {
+       if (optionsProp) {
+         const emptyOpt = optionsProp.find(opt => opt.value === "" || opt.value === undefined);
+         if (emptyOpt) derivedPlaceholder = emptyOpt.label as string;
+       } else {
+         const emptyChild = React.Children.toArray(children).find(
+          (child) => React.isValidElement(child) && child.type === "option" && ((child.props as any).value === "" || (child.props as any).value === undefined)
+         );
+         if (React.isValidElement(emptyChild)) {
+           derivedPlaceholder = (emptyChild.props as any).children as string;
+         }
+       }
+    }
 
     return (
       <SelectRoot 
@@ -159,12 +184,13 @@ const SimpleSelect = React.forwardRef<HTMLButtonElement, SimpleSelectProps>(
         defaultValue={defaultValue?.toString()} 
         onValueChange={handleValueChange}
         required={required}
+        disabled={disabled}
       >
         <SelectTrigger ref={ref} className={className}>
           <SelectValue placeholder={derivedPlaceholder || "请选择..."} />
         </SelectTrigger>
         <SelectContent>
-          {options.map((opt) => (
+          {derivedOptions.map((opt) => (
             <SelectItem key={opt.id} value={opt.value} disabled={opt.disabled}>
               {opt.label}
             </SelectItem>

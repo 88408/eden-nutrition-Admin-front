@@ -364,7 +364,7 @@ export default function ProductList() {
               <TableHead className="w-12 text-center py-4 rounded-tl-2xl">
                 <Checkbox
                   checked={products.length > 0 && selectedIds.length === products.length}
-                  onChange={handleSelectAll}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
                 />
               </TableHead>
               <TableHead className="py-4 font-semibold text-[#1d1d1f]">商品名称</TableHead>
@@ -385,7 +385,9 @@ export default function ProductList() {
               </TableRow>
             ) : products.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-16 text-[#86868b]">未找到商品</TableCell>
+                <TableCell colSpan={7} className="text-center py-16 text-[#86868b]">
+                  <span>未找到商品</span>
+                </TableCell>
               </TableRow>
             ) : (
               products.map((product) => {
@@ -395,7 +397,7 @@ export default function ProductList() {
                     <TableCell className="text-center">
                       <Checkbox
                         checked={selectedIds.includes(product.id)}
-                        onChange={(checked) => handleSelectOne(product.id, checked)}
+                        onChange={(e) => handleSelectOne(product.id, e.target.checked)}
                       />
                     </TableCell>
                     <TableCell>
@@ -582,7 +584,7 @@ export default function ProductList() {
         <form onSubmit={handleBatchEdit} className="space-y-6 pt-4">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <Checkbox checked={batchEditData.updateCategory} onChange={(checked) => setBatchEditData({...batchEditData, updateCategory: checked})} />
+              <Checkbox checked={batchEditData.updateCategory} onChange={(e) => setBatchEditData({...batchEditData, updateCategory: e.target.checked})} />
               <div className="flex-1">
                 <label className="block text-sm font-semibold text-[#1d1d1f] mb-1 ml-1">统一分类为</label>
                 <Select disabled={!batchEditData.updateCategory} value={batchEditData.categoryId} onChange={(e) => setBatchEditData({...batchEditData, categoryId: e.target.value})}

@@ -77,7 +77,7 @@ export default function CategoryList() {
         });
         return result;
       };
-      setCategories(flattenTree(res));
+      setCategories(flattenTree(res as any));
     } catch (e: any) {
       toast.error('拉取分类失败');
     }
@@ -125,7 +125,7 @@ export default function CategoryList() {
         await updateCategory({ ...submitData, id: editingId });
         toast.success('修改成功');
       } else {
-        await addCategory(submitData);
+        await addCategory(submitData as any);
         toast.success('添加成功');
       }
       setIsModalOpen(false);
