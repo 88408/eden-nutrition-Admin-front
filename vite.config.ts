@@ -25,6 +25,7 @@ export default defineConfig(({mode}) => {
         '/admin': {
           target: 'http://localhost:8080',
           changeOrigin: true,
+          rewrite: (path) => `/api${path}`,
         },
       },
     },
