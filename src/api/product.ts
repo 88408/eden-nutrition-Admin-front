@@ -8,6 +8,12 @@ export interface ProductVO {
   stock: number;
   status: number;
   mainImage: string;
+  subtitle?: string;
+  originalPrice?: number;
+  isHot?: number;
+  isNew?: number;
+  sales?: number;
+  detail?: string;
   createTime: string;
   updateTime: string;
 }
