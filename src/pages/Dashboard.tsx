@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   ShoppingCart, 
@@ -46,41 +46,15 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { salesTrendData } from '../data/mock';
 import toast from 'react-hot-toast';
+import { getDashboardStats, getSalesRevenue, DashboardStatItem, SalesRevenue } from '../api/dashboard';
+import { getOrderPage } from '../api/order';
 
-const stats = [
-  { 
-    name: '今日订单', 
-    value: '156', 
-    icon: ShoppingCart, 
-    change: '+12.5%', 
-    changeType: 'positive',
-    color: 'bg-blue-500'
-  },
-  { 
-    name: '总销售额', 
-    value: '¥45,231', 
-    icon: DollarSign, 
-    change: '+8.2%', 
-    changeType: 'positive',
-    color: 'bg-emerald-500'
-  },
-  { 
-    name: '新增用户', 
-    value: '42', 
-    icon: Users, 
-    change: '-2.4%', 
-    changeType: 'negative',
-    color: 'bg-orange-500'
-  },
-  { 
-    name: '转化率', 
-    value: '3.2%', 
-    icon: TrendingUp, 
-    change: '+1.1%', 
-    changeType: 'positive',
-    color: 'bg-purple-500'
-  },
-];
+const statUIConfigs: Record<string, { icon: any, color: string }> = {
+  '今日订单': { icon: ShoppingCart, color: 'bg-blue-500' },
+  '总销售额': { icon: DollarSign, color: 'bg-emerald-500' },
+  '新增用户': { icon: Users, color: 'bg-orange-500' },
+  '转化率': { icon: TrendingUp, color: 'bg-purple-500' },
+};
 
 const tasks = [
   { id: 1, title: '补货乳清蛋白粉 5磅', priority: '高', status: 'pending', icon: Package, time: '2小时前' },
@@ -95,14 +69,6 @@ const quickActions = [
   { name: '新建订单', icon: ShoppingCart, color: 'bg-emerald-50 text-emerald-600', description: '手动为客户创建新订单' },
   { name: '搜索', icon: Search, color: 'bg-gray-50 text-gray-600', description: '在全站范围内搜索资源' },
   { name: '报表', icon: TrendingUp, color: 'bg-purple-50 text-purple-600', description: '查看详细的业务分析报表' },
-];
-
-const recentOrders = [
-  { id: 'ORD-001', customer: '张三', product: '乳清蛋白粉 5磅', amount: '¥399.00', status: '已发货', date: '2026-03-17' },
-  { id: 'ORD-002', customer: '李四', product: '维生素 C', amount: '¥89.00', status: '待处理', date: '2026-03-17' },
-  { id: 'ORD-003', customer: '王五', product: 'BCAA 粉末', amount: '¥159.00', status: '已完成', date: '2026-03-16' },
-  { id: 'ORD-004', customer: '赵六', product: '左旋肉碱', amount: '¥129.00', status: '已完成', date: '2026-03-16' },
-  { id: 'ORD-005', customer: '孙七', product: '蛋白棒', amount: '¥199.00', status: '已发货', date: '2026-03-15' },
 ];
 
 const container = {
@@ -123,6 +89,85 @@ const item = {
 export default function Dashboard() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedAction, setSelectedAction] = useState<any>(null);
+  const [dbStats, setDbStats] = useState<any[]>(Object.entries(statUIConfigs).map(([name, config]) => ({
+    name,
+    value: '-',
+    change: '-',
+    changeType: 'positive',
+    icon: config.icon,
+    color: config.color
+  })));
+  const [dbSalesData, setDbSalesData] = useState<any[]>([]);
+  const [dbRecentOrders, setDbRecentOrders] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [statsRes, salesRes, ordersRes] = await Promise.all([
+        getDashboardStats(),
+        getSalesRevenue(7),
+        getOrderPage({ page: 1, pageSize: 5 })
+      ]);
+      
+      // statsRes is the array directly due to axios interceptor returning res.data
+      if (Array.isArray(statsRes)) {
+        const trueStats = statsRes.map((stat: any) => {
+           const uiConfig = statUIConfigs[stat.name] || { icon: TrendingUp, color: 'bg-gray-500' };
+
+           let changeStr = stat.change || '-';
+           let changeVal = parseFloat(changeStr.replace('%', '').replace('+', ''));
+           if (!isNaN(changeVal)) {
+             changeStr = (changeVal > 0 ? '+' : '') + changeVal.toFixed(1) + '%';
+           }
+
+           return {
+             name: stat.name,
+             value: stat.value,
+             change: changeStr,
+             changeType: stat.changeType,
+             icon: uiConfig.icon,
+             color: uiConfig.color
+           };
+        });
+        setDbStats(trueStats);
+      }
+
+      // salesRes is the array
+      if (Array.isArray(salesRes)) {
+        setDbSalesData(salesRes.map((item: any) => {
+          let dateObj = new Date();
+          if (Array.isArray(item.date)) {
+            // [yyyy, mm, dd]
+            dateObj = new Date(item.date[0], item.date[1] - 1, item.date[2]);
+          } else if (item.date) {
+            dateObj = new Date(item.date);
+          }
+          return {
+            name: dateObj.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }),
+            sales: item.revenue || 0
+          };
+        }));
+      }
+
+      // ordersRes is the object containing list
+      const orderList = (ordersRes as any)?.list || [];
+      if (orderList.length > 0) {
+        setDbRecentOrders(orderList.map((o: any) => ({
+          id: o.orderNo || o.id,
+          customer: o.receiverName || o.userId || '未知客户',
+          product: '查看详情', // 商品详情可通过后续展开查看
+          amount: `¥${(o.payAmount || 0).toFixed(2)}`,
+          status: o.status === 1 ? '待发货' : o.status === 2 ? '已发货' : o.status === 3 ? '已完成' : o.status === 4 ? '已关闭' : '待付款',
+          date: o.createTime ? new Date(o.createTime).toLocaleDateString('zh-CN') : '刚刚'
+        })));
+      }
+    } catch (e) {
+      console.error('Failed to fetch dashboard data', e);
+    }
+  };
 
   const handleQuickAction = (action: any) => {
     setSelectedAction(action);
@@ -192,7 +237,7 @@ export default function Dashboard() {
           </div>
           <div className="flex-1 h-[300px] -ml-4">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={salesTrendData}>
+              <AreaChart data={dbSalesData}>
                 <defs>
                   <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#0071e3" stopOpacity={0.1}/>
@@ -258,7 +303,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Stats Widgets */}
-        {stats.map((stat) => (
+        {dbStats.map((stat) => (
           <motion.div 
             key={stat.name} 
             variants={item}
@@ -277,7 +322,7 @@ export default function Dashboard() {
             </div>
             <div className="mt-4 overflow-hidden">
               <p className="text-sm font-medium text-[#86868b] truncate">{stat.name}</p>
-              <h4 className="text-2xl font-bold text-[#1d1d1f] mt-1 font-display tracking-tight truncate" title={stat.value}>{stat.value}</h4>
+              <h4 className="text-xl 2xl:text-2xl font-bold text-[#1d1d1f] mt-1 font-display tracking-tight" title={stat.value}>{stat.value}</h4>
             </div>
           </motion.div>
         ))}
@@ -337,7 +382,7 @@ export default function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentOrders.slice(0, 3).map((order) => (
+                {dbRecentOrders.slice(0, 3).map((order) => (
                   <TableRow key={order.id} className="border-black/[0.03] hover:bg-gray-50/50">
                     <TableCell className="font-bold text-[#1d1d1f] font-mono text-xs tracking-tighter">{order.id}</TableCell>
                     <TableCell className="text-[#1d1d1f] font-medium">{order.customer}</TableCell>
@@ -567,7 +612,7 @@ export default function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentOrders.map((order) => (
+                {dbRecentOrders.map((order) => (
                   <TableRow key={order.id} className="border-black/[0.03] hover:bg-gray-50/50">
                     <TableCell className="font-bold text-[#1d1d1f] font-mono text-xs tracking-tighter">{order.id}</TableCell>
                     <TableCell className="text-[#1d1d1f] font-medium">{order.customer}</TableCell>
