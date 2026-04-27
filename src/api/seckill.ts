@@ -7,7 +7,6 @@ export interface SeckillVO {
   productName: string;
   productMainImage: string;
   seckillPrice: number;
-  stockCount: number;
   stock: number;
   limitPerUser: number;
   status: number;
@@ -38,8 +37,10 @@ export const getSeckillDetail = (id: number) =>
 export const addSeckill = (data: Partial<SeckillVO>) =>
   request.post<any, void>('/admin/seckill', data);
 
-export const updateSeckill = (data: Partial<SeckillVO>) =>
-  request.put<any, void>('/admin/seckill', data);
+export const updateSeckill = (data: Partial<SeckillVO>) => {
+  const { status, ...payload } = data;
+  return request.put<any, void>('/admin/seckill', payload);
+};
 
 export const deleteSeckill = (id: number) =>
   request.delete<any, void>(`/admin/seckill/${id}`);

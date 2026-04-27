@@ -27,7 +27,7 @@ export default function SeckillList() {
     productId: '', 
     productName: '', 
     seckillPrice: '', 
-    stockCount: '', 
+    stock: '', 
     startTime: '', 
     endTime: '' 
   });
@@ -51,7 +51,7 @@ export default function SeckillList() {
       productId: seckill.productId.toString(),
       productName: seckill.productName,
       seckillPrice: seckill.seckillPrice.toString(),
-      stockCount: seckill.stock.toString(),
+      stock: seckill.stock.toString(),
       startTime: seckill.startTime,
       endTime: seckill.endTime
     });
@@ -60,7 +60,7 @@ export default function SeckillList() {
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.productId || !formData.seckillPrice || !formData.stockCount || !formData.startTime || !formData.endTime) {
+    if (!formData.productId || !formData.seckillPrice || !formData.stock || !formData.startTime || !formData.endTime) {
       toast.error('请填写完整信息');
       return;
     }
@@ -70,14 +70,14 @@ export default function SeckillList() {
         id: editingId!,
         productId: Number(formData.productId),
         seckillPrice: Number(formData.seckillPrice),
-        stockCount: Number(formData.stockCount),
+        stock: Number(formData.stock),
         limitPerUser: 1, // mock limit
         startTime: formData.startTime.replace('T', ' ') + (formData.startTime.length === 16 ? ':00' : ''),
         endTime: formData.endTime.replace('T', ' ') + (formData.endTime.length === 16 ? ':00' : ''),
       });
       
       setIsEditModalOpen(false);
-      setFormData({ productId: '', productName: '', seckillPrice: '', stockCount: '', startTime: '', endTime: '' });
+      setFormData({ productId: '', productName: '', seckillPrice: '', stock: '', startTime: '', endTime: '' });
       setEditingId(null);
       toast.success('修改成功');
       fetchData();
@@ -88,7 +88,7 @@ export default function SeckillList() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.productId || !formData.seckillPrice || !formData.stockCount || !formData.startTime || !formData.endTime) {
+    if (!formData.productId || !formData.seckillPrice || !formData.stock || !formData.startTime || !formData.endTime) {
       toast.error('请填写完整信息');
       return;
     }
@@ -97,14 +97,14 @@ export default function SeckillList() {
       await addSeckill({
         productId: Number(formData.productId),
         seckillPrice: Number(formData.seckillPrice),
-        stockCount: Number(formData.stockCount),
+        stock: Number(formData.stock),
         limitPerUser: 1, // mock
         startTime: formData.startTime.replace('T', ' ') + (formData.startTime.length === 16 ? ':00' : ''),
         endTime: formData.endTime.replace('T', ' ') + (formData.endTime.length === 16 ? ':00' : ''),
       });
       
       setIsModalOpen(false);
-      setFormData({ productId: '', productName: '', seckillPrice: '', stockCount: '', startTime: '', endTime: '' });
+      setFormData({ productId: '', productName: '', seckillPrice: '', stock: '', startTime: '', endTime: '' });
       toast.success('创建成功');
       fetchData();
     } catch (e) {
@@ -157,7 +157,7 @@ export default function SeckillList() {
         <Button 
           className="flex items-center gap-2 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-2xl px-6 py-6 font-semibold shadow-lg shadow-blue-500/10 transition-all active:scale-[0.98]" 
           onClick={() => {
-            setFormData({ productId: '', productName: '', seckillPrice: '', stockCount: '', startTime: '', endTime: '' });
+            setFormData({ productId: '', productName: '', seckillPrice: '', stock: '', startTime: '', endTime: '' });
             setIsModalOpen(true);
           }}
         >
@@ -291,8 +291,8 @@ export default function SeckillList() {
                   type="number"
                   min="1"
                   required
-                  value={formData.stockCount}
-                  onChange={(e) => setFormData({...formData, stockCount: e.target.value})}
+                  value={formData.stock}
+                  onChange={(e) => setFormData({...formData, stock: e.target.value})}
                   placeholder="数量"
                   className="rounded-2xl bg-[#f5f5f7] border-none py-3 px-4 focus:ring-2 focus:ring-[#0071e3]/20 transition-all"
                 />
@@ -376,8 +376,8 @@ export default function SeckillList() {
                   type="number"
                   min="1"
                   required
-                  value={formData.stockCount}
-                  onChange={(e) => setFormData({...formData, stockCount: e.target.value})}
+                  value={formData.stock}
+                  onChange={(e) => setFormData({...formData, stock: e.target.value})}
                   placeholder="数量"
                   className="rounded-2xl bg-[#f5f5f7] border-none py-3 px-4 focus:ring-2 focus:ring-[#0071e3]/20 transition-all"
                 />
