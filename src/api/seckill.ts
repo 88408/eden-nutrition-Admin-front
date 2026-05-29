@@ -7,7 +7,7 @@ export interface SeckillVO {
   productName: string;
   productMainImage: string;
   seckillPrice: number;
-  stock: number;
+  stockCount: number;
   limitPerUser: number;
   status: number;
   startTime: string;
