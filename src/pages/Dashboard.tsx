@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   ShoppingCart, 
@@ -48,6 +49,8 @@ import { salesTrendData } from '../data/mock';
 import toast from 'react-hot-toast';
 import { getDashboardStats, getSalesRevenue, DashboardStatItem, SalesRevenue } from '../api/dashboard';
 import { getOrderPage } from '../api/order';
+import { exportReport } from '../api/export';
+import { downloadBase64Csv, downloadBase64Excel } from '../utils/download';
 
 const statUIConfigs: Record<string, { icon: any, color: string }> = {
   '今日订单': { icon: ShoppingCart, color: 'bg-blue-500' },
@@ -56,19 +59,10 @@ const statUIConfigs: Record<string, { icon: any, color: string }> = {
   '转化率': { icon: TrendingUp, color: 'bg-purple-500' },
 };
 
-const tasks = [
-  { id: 1, title: '补货乳清蛋白粉 5磅', priority: '高', status: 'pending', icon: Package, time: '2小时前' },
-  { id: 2, title: '审核 12 个新订单', priority: '中', status: 'in-progress', icon: ShoppingCart, time: '4小时前' },
-  { id: 3, title: '更新维生素 C 价格', priority: '低', status: 'completed', icon: Zap, time: '昨天' },
-  { id: 4, title: '检查库存预警', priority: '高', status: 'pending', icon: AlertCircle, time: '3小时前' },
-  { id: 5, title: '准备月度销售报告', priority: '中', status: 'pending', icon: FileText, time: '5小时前' },
-];
-
 const quickActions = [
-  { name: '添加商品', icon: Plus, color: 'bg-blue-50 text-blue-600', description: '快速上架新商品到目录' },
-  { name: '新建订单', icon: ShoppingCart, color: 'bg-emerald-50 text-emerald-600', description: '手动为客户创建新订单' },
-  { name: '搜索', icon: Search, color: 'bg-gray-50 text-gray-600', description: '在全站范围内搜索资源' },
-  { name: '报表', icon: TrendingUp, color: 'bg-purple-50 text-purple-600', description: '查看详细的业务分析报表' },
+  { name: '添加商品', icon: Plus, color: 'bg-blue-50 text-blue-600', path: '/product/list' },
+  { name: '添加分类', icon: FileText, color: 'bg-emerald-50 text-emerald-600', path: '/category/list' },
+  { name: '管理订单', icon: ShoppingCart, color: 'bg-orange-50 text-orange-600', path: '/order/list' },
 ];
 
 const container = {
@@ -86,7 +80,23 @@ const item = {
   show: { y: 0, opacity: 1 }
 };
 
+const getRelativeTime = (timeStr: string): string => {
+  if (!timeStr) return '刚刚';
+  const now = Date.now();
+  const then = new Date(timeStr).getTime();
+  const diff = Math.max(0, now - then);
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return '刚刚';
+  if (minutes < 60) return `${minutes}分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}天前`;
+  return new Date(timeStr).toLocaleDateString('zh-CN');
+};
+
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedAction, setSelectedAction] = useState<any>(null);
   const [dbStats, setDbStats] = useState<any[]>(Object.entries(statUIConfigs).map(([name, config]) => ({
@@ -99,6 +109,9 @@ export default function Dashboard() {
   })));
   const [dbSalesData, setDbSalesData] = useState<any[]>([]);
   const [dbRecentOrders, setDbRecentOrders] = useState<any[]>([]);
+  const [dbTasks, setDbTasks] = useState<any[]>([]);
+  const [reportRange, setReportRange] = useState('最近7天');
+  const [reportFormat, setReportFormat] = useState<'csv' | 'xlsx'>('csv');
 
   useEffect(() => {
     fetchDashboardData();
@@ -106,10 +119,11 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [statsRes, salesRes, ordersRes] = await Promise.all([
+      const [statsRes, salesRes, ordersRes, unshippedRes] = await Promise.all([
         getDashboardStats(),
         getSalesRevenue(7),
-        getOrderPage({ page: 1, pageSize: 5 })
+        getOrderPage({ page: 1, pageSize: 5 }),
+        getOrderPage({ page: 1, pageSize: 10, status: 1 })
       ]);
       
       // statsRes is the array directly due to axios interceptor returning res.data
@@ -162,6 +176,19 @@ export default function Dashboard() {
           amount: `¥${(o.payAmount || 0).toFixed(2)}`,
           status: o.status === 1 ? '待发货' : o.status === 2 ? '已发货' : o.status === 3 ? '已完成' : o.status === 4 ? '已关闭' : '待付款',
           date: o.createTime ? new Date(o.createTime).toLocaleDateString('zh-CN') : '刚刚'
+        })));
+      }
+
+      // 未发货订单 → 任务列表
+      const unshippedList = (unshippedRes as any)?.list || [];
+      if (unshippedList.length > 0) {
+        setDbTasks(unshippedList.map((o: any) => ({
+          id: o.id,
+          title: `订单 ${o.orderNo || o.id}`,
+          priority: (o.payAmount || 0) > 1000 ? '高' : (o.payAmount || 0) > 500 ? '中' : '低',
+          status: 'pending',
+          icon: ShoppingCart,
+          time: getRelativeTime(o.createTime)
         })));
       }
     } catch (e) {
@@ -286,7 +313,7 @@ export default function Dashboard() {
             {quickActions.map((action) => (
               <button 
                 key={action.name}
-                onClick={() => handleQuickAction(action)}
+                onClick={() => navigate(action.path)}
                 className="flex flex-col items-center justify-center p-4 rounded-2xl border border-black/[0.03] hover:bg-gray-50 transition-all group"
               >
                 <div className={`p-3 rounded-xl ${action.color} mb-3 group-hover:scale-110 transition-transform`}>
@@ -339,8 +366,8 @@ export default function Dashboard() {
             </button>
           </div>
           <div className="space-y-4">
-            {tasks.slice(0, 3).map((task) => (
-              <div key={task.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-all cursor-pointer group">
+            {dbTasks.slice(0, 3).map((task) => (
+              <div key={task.id} onClick={() => navigate('/order/list')} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-all cursor-pointer group">
                 <div className={`p-2 rounded-lg ${
                   task.status === 'completed' ? 'bg-emerald-50 text-emerald-600' :
                   task.status === 'in-progress' ? 'bg-blue-50 text-blue-600' :
@@ -414,32 +441,82 @@ export default function Dashboard() {
         title="下载报表"
       >
         <div className="space-y-6 pt-4">
-          <p className="text-[#86868b] text-sm">选择您想要下载的报表格式和时间范围。</p>
-          <div className="grid grid-cols-2 gap-4">
-            <button className="flex flex-col items-center gap-3 p-6 rounded-2xl border-2 border-[#0071e3] bg-blue-50/50">
-              <Download className="h-8 w-8 text-[#0071e3]" />
-              <span className="font-bold text-[#1d1d1f]">PDF 格式</span>
-            </button>
-            <button className="flex flex-col items-center gap-3 p-6 rounded-2xl border border-black/[0.05] hover:bg-gray-50 transition-all">
-              <FileText className="h-8 w-8 text-emerald-500" />
-              <span className="font-bold text-[#1d1d1f]">Excel 格式</span>
-            </button>
+          <p className="text-[#86868b] text-sm">选择格式和时间范围，下载销售报表。</p>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-[#1d1d1f] ml-1">文件格式</label>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => setReportFormat('csv')}
+                className={`flex flex-col items-center gap-3 p-6 rounded-2xl transition-all ${
+                  reportFormat === 'csv'
+                    ? 'border-2 border-[#0071e3] bg-blue-50/50'
+                    : 'border border-black/[0.05] hover:bg-gray-50'
+                }`}
+              >
+                <FileText className={`h-8 w-8 ${reportFormat === 'csv' ? 'text-[#0071e3]' : 'text-emerald-500'}`} />
+                <span className="font-bold text-[#1d1d1f]">CSV 格式</span>
+              </button>
+              <button
+                onClick={() => setReportFormat('xlsx')}
+                className={`flex flex-col items-center gap-3 p-6 rounded-2xl transition-all ${
+                  reportFormat === 'xlsx'
+                    ? 'border-2 border-[#0071e3] bg-blue-50/50'
+                    : 'border border-black/[0.05] hover:bg-gray-50'
+                }`}
+              >
+                <Download className={`h-8 w-8 ${reportFormat === 'xlsx' ? 'text-[#0071e3]' : 'text-emerald-500'}`} />
+                <span className="font-bold text-[#1d1d1f]">Excel 格式</span>
+              </button>
+            </div>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-semibold text-[#1d1d1f] ml-1">时间范围</label>
             <div className="grid grid-cols-3 gap-2">
               {['最近7天', '最近30天', '本季度'].map(range => (
-                <button key={range} className="py-2 px-4 rounded-xl bg-[#f5f5f7] text-sm font-medium text-[#1d1d1f] hover:bg-[#e8e8ed]">
+                <button
+                  key={range}
+                  onClick={() => setReportRange(range)}
+                  className={`py-2 px-4 rounded-xl text-sm font-medium transition-all ${
+                    reportRange === range
+                      ? 'bg-[#0071e3] text-white shadow-sm'
+                      : 'bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#e8e8ed]'
+                  }`}
+                >
                   {range}
                 </button>
               ))}
             </div>
           </div>
           <div className="flex justify-end pt-4">
-            <Button 
+            <Button
               className="bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-2xl px-8 py-6 font-bold shadow-lg shadow-blue-500/10"
-              onClick={() => {
+              onClick={async () => {
                 toast.success('报表生成中，请稍候...');
+                const now = new Date();
+                const nowStr = now.toISOString().slice(0, 10);
+                let startTime: string;
+                if (reportRange === '最近7天') {
+                  const d = new Date(now); d.setDate(d.getDate() - 7);
+                  startTime = d.toISOString().slice(0, 10);
+                } else if (reportRange === '最近30天') {
+                  const d = new Date(now); d.setDate(d.getDate() - 30);
+                  startTime = d.toISOString().slice(0, 10);
+                } else {
+                  const d = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+                  startTime = d.toISOString().slice(0, 10);
+                }
+                try {
+                  const data: string = await (exportReport({ startTime, endTime: nowStr, grain: 'day', limit: 10 }) as any);
+                  const filename = `report_${startTime}_${nowStr}.${reportFormat}`;
+                  if (reportFormat === 'csv') {
+                    downloadBase64Csv(data, filename);
+                  } else {
+                    downloadBase64Excel(data, filename);
+                  }
+                  toast.success('报表下载完成');
+                } catch {
+                  toast.error('报表导出失败');
+                }
                 closeModal();
               }}
             >
@@ -530,13 +607,13 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Filter size={16} className="text-[#86868b]" />
-              <span className="text-sm font-medium text-[#86868b]">筛选: 全部任务</span>
+              <span className="text-sm font-medium text-[#86868b]">筛选: 全部待发货订单</span>
             </div>
-            <span className="text-xs text-[#86868b]">共 {tasks.length} 个任务</span>
+            <span className="text-xs text-[#86868b]">共 {dbTasks.length} 个待发货订单</span>
           </div>
           <div className="space-y-3">
-            {tasks.map((task) => (
-              <div key={task.id} className="flex items-center gap-4 p-4 rounded-2xl border border-black/[0.03] hover:bg-[#f5f5f7]/50 transition-all group">
+            {dbTasks.map((task) => (
+              <div key={task.id} onClick={() => { navigate('/order/list'); closeModal(); }} className="flex items-center gap-4 p-4 rounded-2xl border border-black/[0.03] hover:bg-[#f5f5f7]/50 transition-all cursor-pointer group">
                 <div className={`p-3 rounded-xl ${
                   task.status === 'completed' ? 'bg-emerald-50 text-emerald-600' :
                   task.status === 'in-progress' ? 'bg-blue-50 text-blue-600' :

@@ -41,10 +41,12 @@ request.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-        case 403:
           localStorage.removeItem('token');
           window.location.href = '/login';
           toast.error('登录已过期，请重新登录');
+          break;
+        case 403:
+          toast.error(error.response.data?.message || '没有访问权限');
           break;
         default:
           toast.error(error.response.data?.message || '请求失败');

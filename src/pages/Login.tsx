@@ -28,7 +28,7 @@ export default function Login() {
     try {
       const res = await adminLogin({ username, password });
       // If code reaches here, request was successful as axios interceptor handles error throws
-      setAuth(res.token, { id: res.userId.toString(), username: res.username, role: res.role });    
+      setAuth(res.token, { id: res.userId.toString(), username: res.username, role: res.role }, res.permissions);
       toast.success('登录成功');
       navigate('/');
     } catch (error: any) {

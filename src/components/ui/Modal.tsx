@@ -15,8 +15,8 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className={cn("relative w-full max-w-lg rounded-[2.5rem] bg-white p-8 shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-black/[0.02]", className)}>
-        <div className="flex items-center justify-between mb-6">
+      <div className={cn("relative w-full max-w-lg rounded-[2.5rem] bg-white p-8 shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-black/[0.02] flex flex-col max-h-[calc(100vh-8rem)]", className)}>
+        <div className="flex items-center justify-between mb-6 shrink-0">
           <h2 className="text-2xl font-bold text-[#1d1d1f] font-display">{title}</h2>
           <button
             onClick={onClose}
@@ -25,7 +25,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
             <X className="h-6 w-6 text-[#86868b]" />
           </button>
         </div>
-        <div className="mt-2">
+        <div className="mt-2 overflow-y-auto flex-1 -mr-2 pr-2">
           {children}
         </div>
       </div>

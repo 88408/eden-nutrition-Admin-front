@@ -9,21 +9,27 @@ interface User {
 interface AuthState {
   token: string | null;
   user: User | null;
-  setAuth: (token: string, user: User) => void;
+  permissions: string[];
+  setAuth: (token: string, user: User, permissions?: string[]) => void;
   logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   token: localStorage.getItem('token'),
   user: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!) : null,
-  setAuth: (token, user) => {
+  permissions: localStorage.getItem('permissions')
+    ? JSON.parse(localStorage.getItem('permissions')!)
+    : [],
+  setAuth: (token, user, permissions = []) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
-    set({ token, user });
+    localStorage.setItem('permissions', JSON.stringify(permissions));
+    set({ token, user, permissions });
   },
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    set({ token: null, user: null });
+    localStorage.removeItem('permissions');
+    set({ token: null, user: null, permissions: [] });
   },
 }));

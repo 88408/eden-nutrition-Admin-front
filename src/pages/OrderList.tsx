@@ -11,7 +11,6 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
-import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Search, Eye, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'motion/react';
@@ -41,6 +40,16 @@ const mapStatusFilter = (filter: string) => {
   }
 };
 
+const deliveryCompanies = [
+  '顺丰速运', '中通快递', '圆通速递', '韵达快递',
+  '申通快递', '极兔速递', '邮政快递', '京东物流'
+];
+
+const companyToPrefix: Record<string, string> = {
+  '顺丰速运': 'SF', '中通快递': 'ZTO', '圆通速递': 'YTO', '韵达快递': 'YD',
+  '申通快递': 'STO', '极兔速递': 'JT', '邮政快递': 'EMS', '京东物流': 'JD'
+};
+
 export default function OrderList() {
   const [orders, setOrders] = useState<any[]>([]);
   const [keyword, setKeyword] = useState('');
@@ -48,9 +57,11 @@ export default function OrderList() {
   const [loading, setLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const [shippingOrderId, setShippingOrderId] = useState<number | null>(null);
   const [shippingOrderNo, setShippingOrderNo] = useState<string | null>(null);
+  const [deliveryCompany, setDeliveryCompany] = useState('顺丰速运');
+  const [deliverySn, setDeliverySn] = useState('');
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -79,26 +90,31 @@ export default function OrderList() {
   };
 
   const handleShipClick = (id: number, orderNo: string) => {
+    const prefix = companyToPrefix['顺丰速运'];
     setShippingOrderId(id);
     setShippingOrderNo(orderNo);
-    setIsConfirmOpen(true);
+    setDeliveryCompany('顺丰速运');
+    setDeliverySn(prefix + Date.now());
+    setActiveModal('ship');
   };
 
   const handleConfirmShip = async () => {
     if (shippingOrderId) {
       try {
-        await deliverOrder({ orderId: shippingOrderId, trackingNo: 'TEST-TRACKING-' + Date.now() });
+        await deliverOrder({ orderId: shippingOrderId, deliveryCompany, deliverySn });
         toast.success('发货成功');
         fetchOrders();
       } catch (e: any) {
         toast.error(e.response?.data?.message || '发货失败');
       } finally {
+        setActiveModal(null);
         setShippingOrderId(null);
         setShippingOrderNo(null);
-        setIsConfirmOpen(false);
       }
     }
   };
+
+  const closeModal = () => setActiveModal(null);
 
   const viewDetails = async (order: any) => {
     try {
@@ -316,13 +332,51 @@ export default function OrderList() {
         )}
       </Modal>
 
-      <ConfirmModal
-        isOpen={isConfirmOpen}
-        onClose={() => setIsConfirmOpen(false)}
-        onConfirm={handleConfirmShip}
+      <Modal
+        isOpen={activeModal === 'ship'}
+        onClose={closeModal}
         title="确认发货"
-        message={`确定要对订单 ${shippingOrderNo} 进行发货处理吗？`}
-      />
+      >
+        <div className="space-y-6 pt-4">
+          <p className="text-sm text-[#86868b]">订单号: {shippingOrderNo}</p>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-[#1d1d1f]">物流公司</label>
+            <Select
+              value={deliveryCompany}
+              onChange={(e) => {
+                setDeliveryCompany(e.target.value);
+                setDeliverySn(companyToPrefix[e.target.value] + Date.now());
+              }}
+            >
+              {deliveryCompanies.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-[#1d1d1f]">物流单号</label>
+            <Input value={deliverySn} readOnly className="bg-gray-50" />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              className="rounded-2xl px-6 py-6 border-[#e8e8ed] text-[#1d1d1f]"
+              onClick={closeModal}
+            >
+              取消
+            </Button>
+            <Button
+              className="bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-2xl px-8 py-6 font-bold shadow-lg shadow-blue-500/10"
+              onClick={handleConfirmShip}
+            >
+              确认发货
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </motion.div>
   );
 }
