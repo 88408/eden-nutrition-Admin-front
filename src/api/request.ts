@@ -21,6 +21,10 @@ request.interceptors.request.use(
 
 request.interceptors.response.use(
   (response) => {
+    // blob 响应直接返回，跳过 JSON 解析
+    if (response.config.responseType === 'blob') {
+      return response;
+    }
     const res = response.data;
     // 后端约定的成功 Code 为 200
     if (res.code === 200 || !res.code) {

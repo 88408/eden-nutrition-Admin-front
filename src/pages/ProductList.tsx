@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -19,10 +19,17 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getProductPage, addProduct, updateProduct, deleteProduct, updateProductStatus, ProductVO } from '../api/product';
 import { getCategoryTree, CategoryTreeVO } from '../api/category';
 
+interface CategoryOption {
+  id: number;
+  label: string;
+}
+
 export default function ProductList() {
+  const [allProducts, setAllProducts] = useState<ProductVO[]>([]);
   const [products, setProducts] = useState<ProductVO[]>([]);
   const [categories, setCategories] = useState<CategoryTreeVO[]>([]);
   const [keyword, setKeyword] = useState('');
+  const [submittedKeyword, setSubmittedKeyword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -53,12 +60,55 @@ export default function ProductList() {
     updateStock: false
   });
 
+  /**
+   * 分类接口返回树形 children；商品表单需要平铺后的选项，才能正确回填任意层级的 categoryId。
+   */
+  const categoryOptions = useMemo<CategoryOption[]>(() => {
+    const flattenCategories = (items: CategoryTreeVO[], parentNames: string[] = []): CategoryOption[] => {
+      return items.flatMap((category) => {
+        const currentNames = [...parentNames, category.name];
+        const option = { id: category.id, label: currentNames.join(' / ') };
+        return [option, ...flattenCategories(category.children || [], currentNames)];
+      });
+    };
+
+    return flattenCategories(categories);
+  }, [categories]);
+
+  /**
+   * 统一通过平铺分类映射展示名称，避免子分类在表格或详情中被误显示为 ID。
+   */
+  const categoryNameMap = useMemo(() => {
+    return new Map(categoryOptions.map(option => [option.id, option.label]));
+  }, [categoryOptions]);
+  /**
+   * 按已获取的商品缓存做名称过滤。
+   * @param sourceProducts 接口已返回的完整商品列表。
+   * @param searchKeyword 已提交的商品名称搜索词；为空时返回完整列表。
+   */
+  const filterProductsByKeyword = (sourceProducts: ProductVO[], searchKeyword: string) => {
+    const trimmedKeyword = searchKeyword.trim().toLowerCase();
+    if (!trimmedKeyword) {
+      return sourceProducts;
+    }
+
+    // 商品名称搜索仅在前端缓存内进行，避免每次提交搜索都重新请求后端分页接口。
+    return sourceProducts.filter(product => product.name.toLowerCase().includes(trimmedKeyword));
+  };
+
+  /**
+   * 获取商品完整列表并刷新前端缓存。
+   * 刷新后会继续套用已提交的搜索词，保证增删改或上下架后仍停留在当前过滤视图。
+   */
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res: any = await getProductPage({ page: 1, pageSize: 100, name: keyword || undefined });
-      setProducts(res.list || res.data?.list || []);
-      setSelectedIds([]); // clear selection
+      const res: any = await getProductPage({ page: 1, pageSize: 100 });
+      // 商品分页接口在不同后端实现中可能返回 list、records 或直接数组，这里统一归一化为表格数据。
+      const productList = Array.isArray(res) ? res : (res.list || res.records || res.data?.list || res.data?.records || []);
+      setAllProducts(productList);
+      setProducts(filterProductsByKeyword(productList, submittedKeyword));
+      setSelectedIds([]); // 刷新后清空批量选择，避免旧选择项误作用到新结果集。
     } catch (e) {
       toast.error('获取列表数据失败');
     } finally {
@@ -80,9 +130,18 @@ export default function ProductList() {
     fetchProducts();
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
+  /**
+   * 提交商品名称搜索表单，直接在已获取商品缓存中计算展示结果。
+   */
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    fetchProducts();
+    // 直接从表单读取当前输入值，避免依赖异步 state 更新导致过滤使用旧关键词。
+    const searchFormData = new FormData(e.currentTarget);
+    const searchKeyword = String(searchFormData.get('productKeyword') || '').trim();
+    setKeyword(searchKeyword);
+    setSubmittedKeyword(searchKeyword);
+    setProducts(filterProductsByKeyword(allProducts, searchKeyword));
+    setSelectedIds([]); // 本地过滤后清空选择，避免批量操作误作用到被过滤掉的商品。
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,6 +257,7 @@ export default function ProductList() {
   };
 
   const handleSelectAll = (checked: boolean) => {
+    // Checkbox 基于原生 input 封装，调用方必须传入 e.target.checked，避免事件对象被当成布尔值。
     if (checked) {
       setSelectedIds(products.map(p => p.id));
     } else {
@@ -206,11 +266,12 @@ export default function ProductList() {
   };
 
   const handleSelectOne = (id: number, checked: boolean) => {
-    if (checked) {
-      setSelectedIds([...selectedIds, id]);
-    } else {
-      setSelectedIds(selectedIds.filter(selectedId => selectedId !== id));
-    }
+    // 使用函数式更新读取最新选择集；选中时去重，取消时移除当前商品 ID。
+    setSelectedIds(prevSelectedIds => (
+      checked
+        ? Array.from(new Set([...prevSelectedIds, id]))
+        : prevSelectedIds.filter(selectedId => selectedId !== id)
+    ));
   };
 
   const handleBatchAction = async () => {
@@ -315,9 +376,10 @@ export default function ProductList() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <Input
+              name="productKeyword"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="搜索商品名称、ID..."
+              placeholder="搜索商品名称..."
               className="pl-10 rounded-xl bg-[#f5f5f7] border-transparent focus:bg-white focus:border-[#0071e3]/30 focus:ring-4 focus:ring-[#0071e3]/10 h-11 transition-all"
             />
           </div>
@@ -364,7 +426,7 @@ export default function ProductList() {
               <TableHead className="w-12 text-center py-4 rounded-tl-2xl">
                 <Checkbox
                   checked={products.length > 0 && selectedIds.length === products.length}
-                  onChange={handleSelectAll}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
                 />
               </TableHead>
               <TableHead className="py-4 font-semibold text-[#1d1d1f]">商品名称</TableHead>
@@ -389,13 +451,13 @@ export default function ProductList() {
               </TableRow>
             ) : (
               products.map((product) => {
-                const categoryName = categories.find(c => c.id === product.categoryId)?.name || `ID:${product.categoryId}`;
+                const categoryName = categoryNameMap.get(product.categoryId) || `ID:${product.categoryId}`;
                 return (
                   <TableRow key={product.id} className="border-b border-[#f5f5f7] hover:bg-[#f5f5f7]/30 transition-colors">
                     <TableCell className="text-center">
                       <Checkbox
                         checked={selectedIds.includes(product.id)}
-                        onChange={(checked) => handleSelectOne(product.id, checked)}
+                        onChange={(e) => handleSelectOne(product.id, e.target.checked)}
                       />
                     </TableCell>
                     <TableCell>
@@ -485,12 +547,13 @@ export default function ProductList() {
             <div>
               <label className="block text-sm font-semibold text-[#1d1d1f] mb-1.5 ml-1">分类 <span className="text-red-500">*</span></label>
               <Select required value={formData.categoryId} onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                options={[
-                  { label: '请选择分类', value: '' },
-                  ...categories.map(c => ({ label: c.name, value: c.id.toString() }))
-                ]}
                 className="rounded-xl bg-[#f5f5f7] border-none h-[44px]"
-              />
+              >
+                <option value="">请选择分类</option>
+                {categoryOptions.map(option => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </Select>
             </div>
             <div>
               <label className="block text-sm font-semibold text-[#1d1d1f] mb-1.5 ml-1">售价 (¥) <span className="text-red-500">*</span></label>
@@ -505,12 +568,11 @@ export default function ProductList() {
             <div>
               <label className="block text-sm font-semibold text-[#1d1d1f] mb-1.5 ml-1">初始状态</label>
               <Select value={formData.status.toString()} onChange={(e) => setFormData({ ...formData, status: Number(e.target.value) })}
-                options={[
-                  { label: '上架 (售卖中)', value: '1' },
-                  { label: '下架 (暂不售卖)', value: '0' }
-                ]}
                 className="rounded-xl bg-[#f5f5f7] border-none h-[44px]"
-              />
+              >
+                <option value="1">上架 (售卖中)</option>
+                <option value="0">下架 (暂不售卖)</option>
+              </Select>
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4">
@@ -555,12 +617,13 @@ export default function ProductList() {
             <div>
               <label className="block text-sm font-semibold text-[#1d1d1f] mb-1.5 ml-1">分类</label>
               <Select required value={formData.categoryId} onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                options={[
-                  { label: '请选择分类', value: '' },
-                  ...categories.map(c => ({ label: c.name, value: c.id.toString() }))
-                ]}
                 className="rounded-xl bg-[#f5f5f7] border-none h-[44px]"
-              />
+              >
+                <option value="">请选择分类</option>
+                {categoryOptions.map(option => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </Select>
             </div>
             <div>
               <label className="block text-sm font-semibold text-[#1d1d1f] mb-1.5 ml-1">售价 (¥)</label>
@@ -582,16 +645,17 @@ export default function ProductList() {
         <form onSubmit={handleBatchEdit} className="space-y-6 pt-4">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <Checkbox checked={batchEditData.updateCategory} onChange={(checked) => setBatchEditData({...batchEditData, updateCategory: checked})} />
+              <Checkbox checked={batchEditData.updateCategory} onChange={(e) => setBatchEditData({...batchEditData, updateCategory: e.target.checked})} />
               <div className="flex-1">
                 <label className="block text-sm font-semibold text-[#1d1d1f] mb-1 ml-1">统一分类为</label>
                 <Select disabled={!batchEditData.updateCategory} value={batchEditData.categoryId} onChange={(e) => setBatchEditData({...batchEditData, categoryId: e.target.value})}
-                  options={[
-                    { label: '选择分类...', value: '' },
-                    ...categories.map(c => ({ label: c.name, value: c.id.toString() }))
-                  ]}
                   className={`rounded-xl border-none h-[40px] transition-colors ${batchEditData.updateCategory ? 'bg-[#f5f5f7]' : 'bg-gray-50 opacity-60'}`}
-                />
+                >
+                  <option value="">选择分类...</option>
+                  {categoryOptions.map(option => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
+                </Select>
               </div>
             </div>
             {/* Price and stock batch omitted for brevity, but functional */}
@@ -655,7 +719,7 @@ export default function ProductList() {
                 <div className="bg-[#f5f5f7] rounded-xl p-3">
                   <p className="text-xs text-[#86868b] mb-1">分类</p>
                   <p className="text-sm font-semibold text-[#1d1d1f]">
-                    {categories.find(c => c.id === selectedProduct.categoryId)?.name || `ID: ${selectedProduct.categoryId}`}
+                    {categoryNameMap.get(selectedProduct.categoryId) || `ID: ${selectedProduct.categoryId}`}
                   </p>
                 </div>
                 <div className="bg-[#f5f5f7] rounded-xl p-3">

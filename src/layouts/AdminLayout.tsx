@@ -151,12 +151,12 @@ export default function AdminLayout() {
         <header className="h-20 apple-blur border-b border-black/[0.03] flex items-center justify-between px-8 shrink-0 z-10">
           <div className="flex items-center gap-6 flex-1">
             <div className="relative max-w-md w-full hidden md:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#86868b]" size={18} />
-              <input 
+              {/*<Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#86868b]" size={18} />*/}
+              {/*<input
                 type="text" 
                 placeholder="搜索任何内容..." 
                 className="w-full bg-[#f5f5f7] border-none rounded-full py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-[#0071e3]/20 transition-all"
-              />
+              />*/}
             </div>
           </div>
           

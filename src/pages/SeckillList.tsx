@@ -234,16 +234,16 @@ export default function SeckillList() {
                   </TableCell>
                   <TableCell>
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                      item.status === '进行中' ? 'bg-[#e3f9e5] text-[#1a7d32]' :
-                      item.status === '未开始' ? 'bg-[#e1f0ff] text-[#0071e3]' :
+                      item.status === 1 ? 'bg-[#e3f9e5] text-[#1a7d32]' :
+                      item.status === 0 ? 'bg-[#e1f0ff] text-[#0071e3]' :
                       'bg-[#f5f5f7] text-[#86868b]'
                     }`}>
-                      {item.status}
+                      {item.status === 0 ? '未开始' : item.status === 1 ? '进行中' : '已结束'}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      {item.status === '未开始' && (
+                      {item.status === 0 && (
                         <Button 
                           variant="ghost" 
                           size="icon" 

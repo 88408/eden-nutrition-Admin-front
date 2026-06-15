@@ -118,8 +118,19 @@ export default function OrderList() {
 
   const viewDetails = async (order: any) => {
     try {
-      const detail = await getOrderDetail(order.id);
-      setSelectedOrder({ ...order, ...detail });
+      const detail: any = await getOrderDetail(order.id);
+      const rawItems = detail?.orderItemList || [];
+      const normalizedItems = rawItems.map((item: any) => ({
+        productName: item.productName || '未知商品',
+        productPrice: Number(item.productPrice) || 0,
+        productQuantity: Number(item.quantity) || 0,
+      }));
+      setSelectedOrder({
+        ...order,
+        ...detail,
+        createTime: detail?.createTime || order?.createTime,
+        orderItems: normalizedItems,
+      });
       setIsModalOpen(true);
     } catch (e) {
       toast.error('获取订单详情失败');

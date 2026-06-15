@@ -41,6 +41,10 @@ export const deleteProduct = (id: number) => {
   return request.delete('/admin/product', { params: { id } });
 };
 
+/**
+ * 切换商品上下架状态。
+ * 后端接口只接收商品 ID 和目标状态两个路径参数，不能携带请求体，否则会命中错误的接口契约。
+ */
 export const updateProductStatus = (id: number, status: number) => {
-  return request.post('/admin/product/status', { id, status });
+  return request.put(`/admin/product/status/${id}/${status}`);
 };

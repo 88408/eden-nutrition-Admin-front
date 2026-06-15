@@ -50,7 +50,7 @@ import toast from 'react-hot-toast';
 import { getDashboardStats, getSalesRevenue, DashboardStatItem, SalesRevenue } from '../api/dashboard';
 import { getOrderPage } from '../api/order';
 import { exportReport } from '../api/export';
-import { downloadBase64Csv, downloadBase64Excel } from '../utils/download';
+import { downloadBlob, csvBlobToExcel } from '../utils/download';
 
 const statUIConfigs: Record<string, { icon: any, color: string }> = {
   '今日订单': { icon: ShoppingCart, color: 'bg-blue-500' },
@@ -506,12 +506,13 @@ export default function Dashboard() {
                   startTime = d.toISOString().slice(0, 10);
                 }
                 try {
-                  const data: string = await (exportReport({ startTime, endTime: nowStr, grain: 'day', limit: 10 }) as any);
+                  const res: any = await exportReport({ startTime, endTime: nowStr, grain: 'day', limit: 10 });
+                  const blob: Blob = res.data;
                   const filename = `report_${startTime}_${nowStr}.${reportFormat}`;
                   if (reportFormat === 'csv') {
-                    downloadBase64Csv(data, filename);
+                    downloadBlob(blob, filename);
                   } else {
-                    downloadBase64Excel(data, filename);
+                    csvBlobToExcel(blob, filename);
                   }
                   toast.success('报表下载完成');
                 } catch {
